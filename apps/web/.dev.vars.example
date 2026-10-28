@@ -1,0 +1,10 @@
+# Copy to .dev.vars for `pnpm preview` (wrangler dev reads it as the Worker's
+# secrets; `vite dev` reads it too, through the platform proxy). Never commit
+# .dev.vars. On stage and prod these come from Orun secrets (README → Stripe,
+# Email); the service-role key from the environment's Supabase project.
+PRIVATE_SUPABASE_SERVICE_ROLE="your project's service_role key"
+# Optional — Stripe (billing) and Resend (email)
+# PRIVATE_STRIPE_API_KEY="sk_test_…"
+# PRIVATE_RESEND_API_KEY="re_…"
+# PRIVATE_ADMIN_EMAIL="you@example.com"
+# PRIVATE_FROM_ADMIN_EMAIL="no-reply@your-verified-domain.example"

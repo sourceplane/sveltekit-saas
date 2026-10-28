@@ -1,0 +1,14 @@
+{
+  "supabase/dev": {
+    "supabase_url": "https://dev-project-ref.supabase.co",
+    "supabase_anon_key": "sb_publishable_fixture_dev"
+  },
+  "supabase/stage": {
+    "supabase_url": "https://stage-project-ref.supabase.co",
+    "supabase_anon_key": "sb_publishable_fixture_stage"
+  },
+  "supabase/prod": {
+    "supabase_url": "https://prod-project-ref.supabase.co",
+    "supabase_anon_key": "sb_publishable_fixture_prod"
+  }
+}

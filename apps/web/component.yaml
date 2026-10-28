@@ -1,0 +1,107 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: web
+  description: The SaaS site (SvelteKit on Cloudflare Workers + Static Assets via @sveltejs/adapter-cloudflare, per environment)
+spec:
+  type: cloudflare-workers-assets-turbo
+  lifecycle: production
+  owner: platform
+  # `app`, not `web`: a domain and a component share one name space in the
+  # catalog, and a domain called `web` hid this component from it.
+  domain: app
+  path: apps/web
+  # Its own lane per environment: the framework build is the longest job in
+  # the plan, and a shared lane would wait on it.
+  lane: isolated
+  # The project this environment talks to: its URL and anon key, in the wiring
+  # document the `supabase` Terraform root lease-publishes after its apply.
+  # Rendered into wrangler.jsonc by the build (and inlined into the bundle),
+  # so a job resolves it when it STARTS.
+  secretEnv:
+    WIRING_SUPABASE_STAGE: "secret://sveltekit-saas/sveltekit-saas/stage/WIRING_SUPABASE"
+    WIRING_SUPABASE_PROD: "secret://sveltekit-saas/sveltekit-saas/prod/WIRING_SUPABASE"
+  # The Worker's SECRETS, each read at request time ($env/dynamic/private),
+  # never inlined: the project's service-role key, which the `supabase` root
+  # publishes beside the wiring, and the owner's Stripe and Resend settings
+  # (README → Stripe, Email). The build hands each one that is set to the
+  # Worker as a secret (tooling/wire/worker-secrets.mjs, the value over
+  # stdin). BEST-EFFORT, wire-now-seed-later: a key nobody has stored is
+  # skipped when the job resolves its secrets (no env var, no failure), and
+  # the site without it says what to connect — so a fresh product deploys and
+  # serves before its owner has a Stripe or Resend account at all.
+  optionalSecretEnv:
+    PRIVATE_SUPABASE_SERVICE_ROLE: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_SERVICE_ROLE_KEY"
+    PRIVATE_STRIPE_API_KEY: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/STRIPE_API_KEY"
+    PRIVATE_RESEND_API_KEY: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/RESEND_API_KEY"
+    PRIVATE_ADMIN_EMAIL: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/ADMIN_EMAIL"
+    PRIVATE_FROM_ADMIN_EMAIL: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/FROM_ADMIN_EMAIL"
+  subscribe:
+    environments:
+      - name: dev
+        profile: verify
+      - name: stage
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+      - name: prod
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+
+    workspaceDir: ../..
+    appDir: .
+
+    turboFilter: "@app/web"
+    wranglerConfig: wrangler.jsonc
+
+    # @sveltejs/adapter-cloudflare emits the Worker as
+    # .svelte-kit/cloudflare/_worker.js and the static output (pre-rendered
+    # pages, _app/* hashed assets, static/) beside it — both deploy in one
+    # `wrangler deploy`.
+    workerEntrypoint: .svelte-kit/cloudflare/_worker.js
+    assetsDir: .svelte-kit/cloudflare
+
+    # Per-env worker name: sveltekit-saas-web-{dev,stage,prod}.
+    workerName: sveltekit-saas-web
+    environmentAwareWorkerName: true
+
+    # The account's workers.dev subdomain; exported to the smoke step as
+    # ${WORKERS_DEV_SUBDOMAIN} and used to build ${DEPLOYED_URL}.
+    workersDevSubdomain: your-workers-subdomain
+
+    installCommand: pnpm install --frozen-lockfile
+    # Render this environment's wrangler config, then build, then hand the
+    # Worker its secrets. stage and prod render from the wiring document their
+    # supabase apply published (secretEnv above, resolved before the job's
+    # first step); dev, which no root applies to and which only verifies,
+    # renders from the committed fixture. The build inlines the rendered
+    # project's URL and anon key (tooling/wire/with-vars.mjs) and the site's
+    # public origin, PUBLIC_SITE_URL — the environment's SITE_URL
+    # (intent.yaml), or its workers.dev URL — into the sitemap, the feed and
+    # the emails. No secret reaches the build (`env -u`): the Worker reads each
+    # at request time. Then every secret the environment has goes to the
+    # Worker (`wrangler secret bulk`, the value over stdin) before the
+    # composition deploys it; only the deploy lane holds a Cloudflare
+    # credential, so a verify lane builds the same and pushes nothing.
+    buildCommand: node ../../tooling/wire/live.mjs --template wrangler.template.jsonc --out wrangler.jsonc --components supabase --env "${ORUN_ENVIRONMENT}" --fixture wiring.fixture.json --fixture-envs dev && env -u PRIVATE_SUPABASE_SERVICE_ROLE -u PRIVATE_STRIPE_API_KEY -u PRIVATE_RESEND_API_KEY -u PRIVATE_ADMIN_EMAIL -u PRIVATE_FROM_ADMIN_EMAIL PUBLIC_SITE_URL="${SITE_URL:-https://sveltekit-saas-web-${ORUN_ENVIRONMENT}.your-workers-subdomain.workers.dev}" pnpm exec turbo run build --filter=@app/web && node ../../tooling/wire/worker-secrets.mjs --worker "sveltekit-saas-web-${ORUN_ENVIRONMENT}" --config wrangler.jsonc --secret PRIVATE_SUPABASE_SERVICE_ROLE --secret PRIVATE_STRIPE_API_KEY --secret PRIVATE_RESEND_API_KEY --secret PRIVATE_ADMIN_EMAIL --secret PRIVATE_FROM_ADMIN_EMAIL
+
+    # Smoke: the home page renders to its end (`</html>`), and /api/health
+    # answers ok — which only the Worker can, by counting the profiles table
+    # in its project with the service-role key, so it proves the project's
+    # wiring and key reached the Worker, the migrations ran and the Worker is
+    # serving, whether or not Stripe and email are connected. Read-only. Each
+    # response is buffered before grep so an early match cannot SIGPIPE curl.
+    smokeCommand: "html=$(curl -sfL \"${DEPLOYED_URL}/\") && echo \"${html}\" | grep -q '</html>' && health=$(curl -sf \"${DEPLOYED_URL}/api/health\") && echo \"${health}\" | grep -q '\"ok\":true'"
+  labels:
+    team: platform
+    layer: delivery
+    surface: web
+    runtime: cloudflare
