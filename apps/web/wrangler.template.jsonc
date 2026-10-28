@@ -1,0 +1,40 @@
+// wrangler.template.jsonc is the source and wrangler.jsonc is rendered from it
+// by tooling/wire: edit the template, never the render. Two renders:
+//
+//   - committed: the render from wiring.fixture.json (`pnpm run wire:fixture`),
+//     a placeholder project URL and key. `wrangler dev`, the dev verify lane
+//     and the composition's structure check (which runs BEFORE the build, in a
+//     fresh checkout) all read it, so it has to exist without a build.
+//   - deployed: the stage and prod lanes re-render it inside their own job
+//     tree, before the build, from the wiring document the `supabase`
+//     Terraform root lease-publishes (WIRING_SUPABASE_<ENV>,
+//     apps/web/component.yaml).
+//
+// The build (`pnpm build`, tooling/wire/with-vars.mjs) hands the two vars
+// below to `vite build`, so `$env/static/public` inlines whichever render it
+// finds into the browser bundle and the Worker alike: they always talk to the
+// same project. The workers-assets composition deploys one environment per
+// job with no wrangler `--env`, so a placeholder token names the environment
+// a render is for. Secrets are not here: the service-role key and Stripe's
+// and Resend's keys are Worker secrets, read at request time.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sveltekit-saas-web",
+  // @sveltejs/adapter-cloudflare's output: the Worker, and beside it the
+  // pre-rendered pages, the hashed _app/ assets and static/.
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".svelte-kit/cloudflare",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  // The Supabase project this environment talks to. The anon key is public by
+  // design — row-level security protects the data — so it is a var, not a
+  // secret.
+  "vars": {
+    "PUBLIC_SUPABASE_URL": "@@wiring(supabase/__ENV__:supabase_url)@@",
+    "PUBLIC_SUPABASE_ANON_KEY": "@@wiring(supabase/__ENV__:supabase_anon_key)@@"
+  }
+}

@@ -1,0 +1,24 @@
+// GENERATED from wrangler.template.jsonc by tooling/wire — edit the
+// template, not this file. The committed copy is the fixture render
+// (`pnpm run wire:fixture`); every Orun lane renders its own environment.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sveltekit-saas-web",
+  // @sveltejs/adapter-cloudflare's output: the Worker, and beside it the
+  // pre-rendered pages, the hashed _app/ assets and static/.
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".svelte-kit/cloudflare",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  // The Supabase project this environment talks to. The anon key is public by
+  // design — row-level security protects the data — so it is a var, not a
+  // secret.
+  "vars": {
+    "PUBLIC_SUPABASE_URL": "https://stage-project-ref.supabase.co",
+    "PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_fixture_stage"
+  }
+}
