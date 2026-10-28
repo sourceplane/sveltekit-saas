@@ -1,0 +1,17 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: SV-2
+  title: "The app on Workers"
+spec:
+  goal: CMSaasStarter runs on Cloudflare Workers + Static Assets through @sveltejs/adapter-cloudflare, talking to the Supabase project its environment's wiring names, with every secret read at request time and green checks
+  affects:
+    - apps/web
+    - tests/web
+    - pnpm-lock.yaml
+    - package.json
+    - turbo.json
+  doneWhen:
+    - pnpm wire:fixture, typecheck, lint, test and build are green
+    - wrangler dev serves the pre-rendered marketing pages, the login pages and /api/health from the built Worker
+  gates: []

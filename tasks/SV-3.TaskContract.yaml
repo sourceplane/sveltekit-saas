@@ -1,0 +1,17 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: SV-3
+  title: "The Supabase project from Terraform, the schema through db-migrate"
+spec:
+  goal: Each environment's Supabase project comes from Terraform, publishes the wiring the app renders from and the service-role key it pushes as a Worker secret, and carries upstream's schema applied by db-migrate before the Worker deploys
+  affects:
+    - infra/terraform/supabase
+    - packages/db
+    - infra/db-migrate
+    - tests/db
+    - pnpm-lock.yaml
+  doneWhen:
+    - the root validates and its outputs match the wiring the app's template reads
+    - the migrations apply into a real Postgres with Supabase's roles and a second apply applies nothing
+  gates: []

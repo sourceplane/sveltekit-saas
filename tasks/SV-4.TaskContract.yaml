@@ -1,0 +1,15 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: SV-4
+  title: "Ready to instantiate"
+spec:
+  goal: A reader can run, test, preview, connect Stripe and Resend, and deploy the product from its README, and the as-built status records every departure from upstream
+  affects:
+    - README.md
+    - apps/web/README.md
+    - specs/epics/sveltekit-saas
+  doneWhen:
+    - the README covers local work, the tests, the environments, Stripe, Resend, OAuth and the custom domain
+    - IMPLEMENTATION-STATUS.md lists every departure from upstream
+  gates: []

@@ -1,0 +1,40 @@
+# The epic's declaration. metadata.name equals the directory name; metadata.key
+# is the task-key prefix this epic reserves (SV → SV-1, SV-2, …). Owner, target
+# date and health are the platform's — never written here.
+apiVersion: orun.io/v1
+kind: Epic
+metadata:
+  name: sveltekit-saas
+  key: SV
+spec:
+  title: "CMSaasStarter's SvelteKit SaaS on Cloudflare Workers with Supabase"
+  summary: "CMSaasStarter (scosman/CMSaasStarter, MIT) — a SvelteKit 2 SaaS template with a pre-rendered marketing site, a blog with RSS and search, a pricing page, Supabase Auth (email and password, OAuth), an account dashboard with profile, email and password settings, Stripe subscriptions and Resend email — runs on Cloudflare Workers + Static Assets through @sveltejs/adapter-cloudflare instead of adapter-auto. Each environment gets its own Supabase project from Terraform through Orun (supabase-starter's root), its URL and anon key rendered into the Worker's config per environment, the service-role key a Worker secret; upstream's Supabase migrations become db-migrate migrations applied over the Management API before the Worker deploys. Stripe and Resend are optional Orun secrets: the site goes live without either and says what to connect."
+  state: started
+  milestones:
+    - name: "SV0 — the spec"
+      exitCriteria:
+        - "intent, CI, the shared tooling, the spec index, this doc set and the task contracts are on main"
+      tasks: [SV-1]
+    - name: "SV1 — the app on Workers"
+      exitCriteria:
+        - "apps/web is the upstream template on @sveltejs/adapter-cloudflare, the marketing pages pre-rendered into the Worker's static assets"
+        - "the wrangler config renders per environment from the supabase root's wiring document (fixture in verify, live in deploy), and the build inlines that project's URL and anon key"
+        - "every secret is read at request time ($env/dynamic/private), never inlined; Stripe and Resend absent, the pages say what to connect"
+        - "`pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` are green"
+      tasks: [SV-2]
+    - name: "SV2 — the Supabase project from Terraform, the schema through db-migrate"
+      exitCriteria:
+        - "infra/terraform/supabase creates the stage and prod projects, sets their Auth, and publishes the wiring document and the service-role key"
+        - "packages/db's runner, run by infra/db-migrate, applies upstream's two migrations over the Management API before the Worker deploys"
+      tasks: [SV-3]
+    - name: "SV3 — ready to instantiate"
+      exitCriteria:
+        - "the README says how to run, test, preview, connect Stripe and Resend, and deploy"
+        - "the as-built status records every departure from the upstream template"
+      tasks: [SV-4]
+    - name: "SV4 — a baseline, in one landing"
+      exitCriteria:
+        - "blueprint.yaml (the console card) and repo-blueprint.yaml (the build) take a new SaaS from nothing to live on stage and prod in ONE landing (01-product) and a hook-only record (02-docs)"
+        - "the product's push-to-main plan applies supabase, then db-migrate, then deploys web, per environment"
+        - "Baseline CI is green: contract tests, the blueprint read by the pinned orun, the leak gate, the offline bootstrap and the end-to-end tier (a user signs up, creates a profile and reaches the account pages under wrangler dev, against a stand-in Supabase over a real Postgres)"
+      tasks: [SV-5]
