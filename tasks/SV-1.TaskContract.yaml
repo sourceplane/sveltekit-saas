@@ -1,0 +1,21 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: SV-1
+  title: "The spec"
+spec:
+  goal: The sveltekit-saas repository's scaffold and epic — intent, CI, shared tooling, spec index, doc set and task contracts — are on main
+  affects:
+    - intent.yaml
+    - .github/workflows/ci.yml
+    - tooling
+    - specs
+    - tasks
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+    - turbo.json
+  doneWhen:
+    - epic.yaml, README, design, implementation plan, risks and status are merged
+    - the five task contracts exist
+  gates: []
