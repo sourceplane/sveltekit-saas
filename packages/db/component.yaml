@@ -1,0 +1,25 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: db
+  description: The schema as migrations, and the runner that applies them over the Supabase Management API (built by the db-migrate component before it plans or applies)
+spec:
+  type: turbo-package
+  lifecycle: production
+  owner: platform
+  domain: data
+  # Verified where the code is checked — on dev, by every pull request. On a
+  # merge the db-migrate component builds this package itself in its own job
+  # before it applies, so stage and prod need no job of their own here.
+  subscribe:
+    environments:
+      - name: dev
+        profile: quick-check
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+    buildCommand: pnpm exec turbo run build --filter=./
+    typecheckCommand: pnpm exec turbo run typecheck --filter=./
+  labels:
+    team: platform
+    layer: data

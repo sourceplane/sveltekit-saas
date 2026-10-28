@@ -1,0 +1,70 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+
+metadata:
+  name: supabase
+  description: Provisions Supabase projects for stage and prod, points their Auth at the app, and wires the URL and keys into orun secrets
+  labels:
+    domain: infra
+    scope: database
+
+spec:
+  type: terraform
+  lifecycle: production
+  owner: platform
+  domain: infra
+
+  parameters:
+    orgName: sourceplane
+    stackName: supabase
+    terraformDir: terraform
+    terraformVersion: "1.15.3"
+    # Supabase region is surfaced to Terraform as TF_VAR_supabaseRegion by the
+    # terraform composition's parameter→TF_VAR loop. The org id is NOT committed
+    # here: it is account-specific and injected as TF_VAR_supabaseOrgId from the
+    # SUPABASE_ORG_ID CI secret (see .github/workflows/ci.yml). Keeping it out of
+    # parameters also prevents the param→TF_VAR loop from overriding the secret.
+    supabaseRegion: ap-southeast-1
+    # The app's Worker, which Auth's Site URL and redirect allow-list name:
+    # <repo>-web-<env> on this workers.dev subdomain — the same value
+    # apps/web/component.yaml carries (TF_VAR_workersDevSubdomain).
+    workersDevSubdomain: your-workers-subdomain
+    # "false": sign-up signs the user straight in, because a project without
+    # SMTP of its own emails only its organization's members. "true" once the
+    # project sends email (the product's README, "Email").
+    authEmailConfirmation: "false"
+    # SEC-JOB: post-apply, these outputs are queued on the runner's sink and
+    # lease-published onto the project/{{env}} rung by the runner. The
+    # project's three database credentials (db-migrate reads them);
+    # WIRING_SUPABASE — the project URL and the publishable (anon) key, the
+    # document the app's build renders into its config; and the service-role
+    # key, which the app's server uses where upstream does (the contact form,
+    # Stripe customers, account deletion) and which its deploy lane — that
+    # environment's only — hands the Worker as a secret.
+    secretOutputs: "SUPABASE_PROJECT_REF=project_ref,SUPABASE_DB_PASSWORD=database_password,SUPABASE_DB_URL=connection_uri,WIRING_SUPABASE=wiring,SUPABASE_SERVICE_ROLE_KEY=service_role_key"
+
+  # Both values resolve from orun secrets (project rung, brokered from the
+  # Supabase integration): a short-lived Management-API access token minted
+  # fresh per run (management-access template — the provider reads
+  # SUPABASE_ACCESS_TOKEN from env natively), and the org id as a non-secret
+  # connection fact (org-id template) surfaced straight to Terraform. The
+  # SUPABASE_ORG_ID CI secret and its TF_VAR mapping are retired.
+  secretEnv:
+    SUPABASE_ACCESS_TOKEN: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_ACCESS_TOKEN"
+    TF_VAR_supabaseOrgId: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_ORG_ID"
+
+  subscribe:
+    environments:
+      - name: stage
+        profile: plan-only
+        profileRules:
+          - profile: apply
+            when:
+              triggerRef: github-push-main
+
+      - name: prod
+        profile: plan-only
+        profileRules:
+          - profile: apply
+            when:
+              triggerRef: github-push-main
