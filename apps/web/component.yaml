@@ -14,6 +14,27 @@ spec:
   # Its own lane per environment: the framework build is the longest job in
   # the plan, and a shared lane would wait on it.
   lane: isolated
+  # INFRA BEFORE APP. The Worker's config carries its project's URL and anon
+  # key, rendered in the build from the wiring document the `supabase` root
+  # lease-publishes after its apply, and its server reads the tables
+  # db-migrate creates in that project. A job resolves its secrets when it
+  # STARTS, so on a merge to main this deploy waits for both (enforced) — one
+  # convergence runs supabase → db-migrate → web per environment, and the
+  # document, the key and the schema are there. A pull request deploys
+  # nothing, so nothing on one waits (advisory).
+  dependsOn:
+    - component: supabase
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+    - component: db-migrate
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
   # The project this environment talks to: its URL and anon key, in the wiring
   # document the `supabase` Terraform root lease-publishes after its apply.
   # Rendered into wrangler.jsonc by the build (and inlined into the bundle),

@@ -1,0 +1,68 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: db-migrate
+  description: Applies the SaaS schema (packages/db's migrations) to the stage and prod Supabase projects
+  labels:
+    domain: infra
+    scope: database
+    team: platform
+    layer: data
+
+spec:
+  type: db-migrate
+  lifecycle: production
+  owner: platform
+  domain: infra
+
+  # THE SCHEMA BETWEEN THE PROJECT AND THE APP. Migrations reach the project
+  # the `supabase` component creates through the Management API, with the
+  # project ref and credentials that component lease-publishes after its
+  # apply — and a job resolves its secrets when it STARTS, so on a merge to
+  # main this waits for that environment's apply (enforced). apps/web waits on
+  # this the same way, so one convergence runs supabase → db-migrate → web per
+  # environment. A pull request applies nothing (this plans offline there), so
+  # nothing on one waits (advisory). `db` is the package this builds and runs;
+  # a change to it re-plans this.
+  dependsOn:
+    - component: db
+    - component: supabase
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+
+  path: packages/db/src/migrations
+
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+    owner: sourceplane
+    repo: sveltekit-saas
+
+  # Everything the runner needs, all resolved from orun secrets: a short-lived
+  # Management-API token minted fresh per run from the Supabase integration
+  # (management-access template), and the project ref and its database
+  # credentials, which the `supabase` component lease-publishes.
+  secretEnv:
+    SUPABASE_ACCESS_TOKEN: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_ACCESS_TOKEN"
+    SUPABASE_PROJECT_REF: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_PROJECT_REF"
+    SUPABASE_DB_PASSWORD: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_DB_PASSWORD"
+    SUPABASE_DB_URL: "secret://sveltekit-saas/sveltekit-saas/{{ .environment }}/SUPABASE_DB_URL"
+
+  subscribe:
+    environments:
+      - name: stage
+        profile: plan
+        profileRules:
+          - profile: apply
+            when:
+              triggerRef: github-push-main
+
+      - name: prod
+        profile: plan
+        profileRules:
+          - profile: apply
+            when:
+              triggerRef: github-push-main
