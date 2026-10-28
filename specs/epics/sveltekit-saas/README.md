@@ -8,7 +8,7 @@ The port keeps the marketing site, the blog with its RSS feed, the build-time se
 
 | Field | Value |
 |-------|-------|
-| Status | SV0–SV2 shipped (#1–#3); SV3 in progress |
+| Status | SV0–SV4 shipped (#1–#5); released as `baseline-v1` |
 | Cluster | **SV** (SV0–SV4) |
 | Owner(s) | `apps/web` (the SvelteKit app) · `tests/web` · `infra/terraform/supabase` · `packages/db` + `infra/db-migrate` · `tests/db` |
 | Builds on | `sveltekit-boilerplate` (a SvelteKit app on adapter-cloudflare, one Worker with Static Assets), `supabase-starter` (the `supabase` root, its Auth settings and wiring, the Supabase stand-in its e2e runs against), `saas-starter` (the migration runner over the Management API and `db-migrate`), `cirrus-baseline` (the `@@wiring(...)@@` deploy-time render) |

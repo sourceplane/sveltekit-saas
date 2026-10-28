@@ -8,8 +8,10 @@ Stripe Checkout and the billing portal, a contact form, and welcome and admin
 email through Resend — running on **Cloudflare Workers + Static Assets**
 through [`@sveltejs/adapter-cloudflare`](https://svelte.dev/docs/kit/adapter-cloudflare),
 with a **Supabase** project per environment provisioned by Terraform through
-[Orun](https://github.com/sourceplane/orun) and its schema applied by
-migrations.
+[Orun](https://github.com/sourceplane/orun) and its schema applied by Orun's
+`db-migrate` — and packaged as an **Orun baseline**: one command takes a new
+product from nothing to live on stage and prod, in its own repository, under
+its own name, in ONE landing.
 
 The app is upstream's, page for page. What changed is where it runs and where
 its settings come from: one Worker serves the pages SvelteKit pre-renders
@@ -17,9 +19,57 @@ from its static assets and renders the rest; the Supabase project's URL and
 anon key are rendered into the Worker's config per environment and inlined
 into its build; every secret — the service-role key, Stripe's and Resend's —
 is a Worker secret, read at request time. Stripe and Resend are optional: the
-site goes live without them and says what to connect. See
-[`specs/epics/sveltekit-saas`](specs/epics/sveltekit-saas/README.md) for the
-design, the milestones and the as-built status.
+site goes live without them and says what to connect. What the baseline adds
+is everything needed to make a copy of it somebody else's — built the way
+[cirrus-baseline](https://github.com/sourceplane/cirrus-baseline) builds a
+product, in one landing. See [`specs/epics/sveltekit-saas`](specs/epics/sveltekit-saas/README.md)
+for the design, the milestones and the as-built status, including every
+departure.
+
+## Instantiating a product
+
+```bash
+git clone --depth 1 --branch <baseline-tag> https://github.com/sourceplane/sveltekit-saas
+cd sveltekit-saas
+orun new --blueprint repo-blueprint.yaml --out ~/products/acme-saas --run-hooks --resume \
+  --set reponame=acme-saas --set productname="Acme SaaS" \
+  --set githuborg=acme-inc --set subdomain=<workers-dev-subdomain>
+```
+
+Or, once the platform's registry lists it, from the Orun console (Baselines →
+`sveltekit-saas` → Build). Two phases: **`01-product`** creates the
+repository, mints the four brokered credentials (Cloudflare and Supabase) and
+lands the whole product as one pull request, whose convergence on `main`
+provisions and deploys it per environment in a fixed order —
+
+```
+supabase ──▶ db-migrate ──▶ web
+```
+
+— each edge `mode: enforced` on a push to main and advisory on a pull
+request; then **`02-docs`** records the live deployment from probed facts.
+**[BOOTSTRAP.md](BOOTSTRAP.md)** is the operator guide;
+[docs/phases/](docs/phases/README.md) has a page per phase.
+
+The new repository receives the **product only** — the app, the Terraform
+root, the migrations, the tests, its CI, its tooling, a README of its own and
+its operating contract — renamed throughout to the product's name,
+repository, Worker and Supabase project. None of this repository's machinery
+ships. **Stripe and email are the owner's to connect afterwards** (the
+product's README, "Stripe" and "Email"): no platform brokers them, so the
+card asks for no Stripe or Resend key, and the site says what is missing.
+
+| What makes it a baseline | Where |
+|---|---|
+| The console card (inputs, secrets, programme) | `blueprint.yaml` |
+| The build document (modules, phases, hooks) | `repo-blueprint.yaml` |
+| This tree's identity, the product's README and the bootstrap's task contracts | `.baseline/` |
+| The rename engine (product-name seam: `apps/web/src/config.ts`) | `tooling/rebrand/rebrand.mjs` |
+| The bootstrap's helpers (deferrals, redeploy marker, work-tree strip) | `tooling/bootstrap/` |
+| The deployment-record renderer | `hooks/render-deployment-docs.sh` |
+| The product's context pack | `ai/context/` |
+| The baseline's tests: contract, leak, offline bootstrap and plans, end to end | `testing/`, `.github/workflows/baseline.yml` |
+| Cutting a `baseline-vN` tag | `.github/workflows/tag.yml` |
 
 ## What is here
 
@@ -155,15 +205,11 @@ step checks the config exists before it builds.
 
 ## CI
 
-`ci.yml` is the Orun pipeline: `orun plan --changed`, then one job per lane.
-A pull request runs the verify lanes (the packages type-checked, linted,
-tested and built, both test suites, the Supabase root planned, the migrations
-planned offline, the Worker built and dry-deployed per environment); a merge
-applies the project, migrates it, then deploys stage → prod. It plans nothing
-while `intent.yaml` names the placeholder workspace `ws_CHANGE_ME`, as this
-repository does. A manual run (Orunbase's Deploy button, or Run workflow on
-`main`) plans the environment and components it names under the push-to-main
-trigger, so they deploy as a merge deploys them.
+| Workflow | What it runs | Ships to a product |
+|---|---|---|
+| `ci.yml` | the Orun pipeline, and the only workflow a product carries: `orun plan --changed`, then one job per lane. A pull request runs the verify lanes (the packages type-checked, linted, tested and built, both test suites, the Supabase root planned, the migrations planned offline, the Worker built and dry-deployed per environment), except the bootstrap's own landings (`orun/BASE-*`), where `plan` alone runs and nothing waits for it — the landing was checked in the build box; a merge applies the project, migrates it, then deploys stage → prod. It plans nothing while `intent.yaml` names the placeholder workspace `ws_CHANGE_ME`, as this repository does. A manual run (Orunbase's Deploy button, or Run workflow on `main`) plans the environment and components it names under the push-to-main trigger, so they deploy as a merge deploys them | yes |
+| `baseline.yml` | the baseline's own tiers: contract tests; the blueprint read by the pinned orun, the leak gate, the offline bootstrap and the product's own plans; the product built, migrated into a local stand-in for a Supabase project, dry-deployed, served, and taken from sign-up to a deleted account | no |
+| `tag.yml` | cuts a `baseline-vN` tag (manual) | no |
 
 ## Licence
 

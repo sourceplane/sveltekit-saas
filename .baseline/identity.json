@@ -1,0 +1,9 @@
+{
+  "_comment": "THIS TREE'S OWN IDENTITY — the FROM side of every rebrand. tooling/rebrand/rebrand.mjs reads it to know what to rename AWAY from; a product's identity is the --values file, which is the TO side. Change a value here only together with the tree: these strings must be what the tree actually contains, or the rename silently misses and the product ships carrying this baseline's name. `productName` is the WebsiteName seam in apps/web/src/config.ts (upstream's own name for the template, which the header and the titles read); `slug` also names the Supabase projects (terraform `repo`), the db-migrate parameters, the Worker and the secret project; `domain` and `subdomain` are placeholders, because this baseline has never deployed under a name of its own; `githubOwner` is the owner in this repository's source link.",
+  "slug": "sveltekit-saas",
+  "pascal": "SvelteKitSaas",
+  "productName": "SaaS Starter",
+  "domain": "sveltekit-saas.example.com",
+  "subdomain": "your-workers-subdomain",
+  "githubOwner": "sourceplane"
+}
