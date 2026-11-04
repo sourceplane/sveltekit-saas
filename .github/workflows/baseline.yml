@@ -62,8 +62,11 @@ jobs:
 
   # Tier 1. THE BLUEPRINT, READ AND PLACED BY THE BINARY A BOOTSTRAP RUNS.
   #
-  # Pinned at the bootstrap floor (BOOTSTRAP.md), not the product's lane pin:
-  # every test here reads YAML with PyYAML, which parses anything well-formed;
+  # Pinned at v2.96.0, not the product's lane pin: at or above the bootstrap
+  # floor (v2.88.0, BOOTSTRAP.md), and the first orun that reads a
+  # component's `spec.preview`, so the placement's `orun validate` checks the
+  # product's live preview too. Every test here reads YAML with PyYAML, which
+  # parses anything well-formed;
   # only the pinned orun can say whether the document is one a bootstrap can
   # run. `--status` parses it, validates every hook against the action
   # registry, compiles every `when` and narration template, and writes
@@ -74,15 +77,16 @@ jobs:
   # --resume that changes nothing). The floor is
   # v2.88.0 (the task set-up in the background, the landings checked in the
   # box, the deploy credentials minted in one `secrets` reconcile per
-  # provider), newer than the product's lane pin (v2.78.4, ci.yml), so the
-  # product's own plans here read the per-edge `modeRules` as its CI does.
+  # provider), and the pin is newer than the product's lane pin (v2.78.4,
+  # ci.yml), so the product's own plans here read the per-edge `modeRules` as
+  # its CI does.
   blueprint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: sourceplane/orun-action@v1.2.0
         with:
-          version: v2.88.0
+          version: v2.96.0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
@@ -129,8 +133,9 @@ jobs:
   # dashboard, billing with no Stripe key, the contact form, a sign-in, a
   # sign-out and an account deleted — and row-level security as the Data
   # API's roles see it.
-  # Pinned at the bootstrap floor (v2.88.0): the offline bootstrap reads the
-  # blueprint, and the floor is newer than the product's lane pin (v2.78.4),
+  # Pinned at v2.96.0, above the bootstrap floor (v2.88.0), the first orun
+  # that reads `spec.preview`: the offline bootstrap reads the blueprint, and
+  # the pin is newer than the product's lane pin (v2.78.4),
   # which is all the lane steps need. The runner image carries PostgreSQL 16
   # (not started); the test starts its own on a random port.
   product:
@@ -139,7 +144,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: sourceplane/orun-action@v1.2.0
         with:
-          version: v2.88.0
+          version: v2.96.0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
