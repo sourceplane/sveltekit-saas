@@ -81,6 +81,27 @@ spec:
           - profile: deploy
             when:
               triggerRef: github-push-main
+  # How the site runs itself for orun.work's live Preview tab
+  # (saas-parallel-baselining PB4): `orun preview` starts this, and a coding
+  # session keeps it running while it works, so the person watches it change
+  # as it is built. The dev server binds the box's loopback only, on a fixed
+  # port, and installs first, so a checkout the session has not installed yet
+  # still comes up.
+  # tooling/wire/with-vars.mjs gives the dev server wrangler.jsonc's vars (the
+  # Supabase project's public URL and anon key), as the site's own build gets
+  # them: `$env/static/public` reads them from the environment. Pages that
+  # need a signed-in user or the Worker's secrets show what they can without
+  # them. --strictPort makes Vite fail rather than move to another port when
+  # 5173 is taken.
+  preview:
+    run:
+      - sh
+      - -c
+      - pnpm install --frozen-lockfile --prefer-offline --filter "@app/web..." && exec node ../../tooling/wire/with-vars.mjs --config wrangler.jsonc -- node_modules/.bin/vite dev --host 127.0.0.1 --port 5173 --strictPort
+    port: 5173
+    path: /
+    env:
+      NODE_OPTIONS: --max-old-space-size=512
   parameters:
     nodeVersion: "22"
     pnpmVersion: "10.12.1"
